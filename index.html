@@ -5,8 +5,8 @@
 <title>Sổ Bán Hàng</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="lib/xlsx.full.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';"></script>
-<script src="lib/pdf.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';"></script>
+<!-- xlsx and pdf.js are now loaded dynamically (see ensureXlsxLib/ensurePdfLib below) so the app can
+     reliably wait for them to finish before use, instead of racing a static <script> tag's fallback. -->
 <style>
   :root{
     --bg:#FAF6EF;
@@ -267,7 +267,67 @@
 
 <script>
 /* ---------------- DATA LAYER ---------------- */
-let PRODUCTS = [];
+/* ---------------- DYNAMIC LIBRARY LOADING (pdf.js / xlsx) ----------------
+   Loaded on first actual use (not at page load) via a Promise, so any code that
+   needs them simply `await`s readiness instead of racing a static <script> tag. */
+function loadScriptOnce(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ()=>resolve(true);
+    s.onerror = ()=>reject(new Error('load failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+let _pdfLibPromise = null;
+function ensurePdfLib(){
+  if(typeof pdfjsLib !== 'undefined') return Promise.resolve(true);
+  if(_pdfLibPromise) return _pdfLibPromise;
+  _pdfLibPromise = (async ()=>{
+    const LOCAL = 'lib/pdf.min.js';
+    const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    try{ await loadScriptOnce(LOCAL); if(typeof pdfjsLib !== 'undefined'){ await setupPdfWorker(); return true; } }catch(e){ /* try CDN */ }
+    try{ await loadScriptOnce(CDN); if(typeof pdfjsLib !== 'undefined'){ await setupPdfWorker(); return true; } }catch(e){ /* fall through */ }
+    _pdfLibPromise = null; // allow retry on next attempt instead of caching a permanent failure
+    throw new Error('Không tải được thư viện đọc PDF — kiểm tra kết nối mạng');
+  })();
+  return _pdfLibPromise;
+}
+async function setupPdfWorker(){
+  const LOCAL = 'lib/pdf.worker.min.js';
+  const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  if(location.protocol === 'file:'){ pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL; return; }
+  try{
+    const res = await fetch(LOCAL, { method:'HEAD' });
+    if(res.ok){ pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL; return; }
+  }catch(e){ /* fall through */ }
+  try{
+    const res = await fetch(CDN);
+    if(res.ok){
+      const code = await res.text();
+      const blob = new Blob([code], { type:'application/javascript' });
+      pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+      return;
+    }
+  }catch(e){ /* fall through */ }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = CDN;
+}
+let _xlsxLibPromise = null;
+function ensureXlsxLib(){
+  if(typeof XLSX !== 'undefined') return Promise.resolve(true);
+  if(_xlsxLibPromise) return _xlsxLibPromise;
+  _xlsxLibPromise = (async ()=>{
+    const LOCAL = 'lib/xlsx.full.min.js';
+    const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    try{ await loadScriptOnce(LOCAL); if(typeof XLSX !== 'undefined') return true; }catch(e){ /* try CDN */ }
+    try{ await loadScriptOnce(CDN); if(typeof XLSX !== 'undefined') return true; }catch(e){ /* fall through */ }
+    _xlsxLibPromise = null;
+    throw new Error('Không tải được thư viện Excel — kiểm tra kết nối mạng');
+  })();
+  return _xlsxLibPromise;
+}
+
+
 let CUSTOMERS = [];
 let INVOICES = [];
 let LOADED = false;
@@ -1432,8 +1492,8 @@ function wireLinkedDbPanel(){
   const b4 = document.getElementById('resumeDbBtn'); if(b4) b4.addEventListener('click', resumeLinkedPermission);
 }
 
-function exportToExcel(){
-  if(typeof XLSX === 'undefined'){ toast('Không tải được thư viện Excel, kiểm tra kết nối mạng'); return; }
+async function exportToExcel(){
+  try{ await ensureXlsxLib(); }catch(e){ toast(e.message); return; }
   const wb = XLSX.utils.book_new();
 
   const spRows = PRODUCTS.map(p=>({
@@ -1475,9 +1535,9 @@ function exportToExcel(){
   if(activeTab==='backup') renderBackup(document.getElementById('main'));
 }
 
-function importFromExcel(file){
+async function importFromExcel(file){
   const status = document.getElementById('importStatus');
-  if(typeof XLSX === 'undefined'){ toast('Không tải được thư viện Excel, kiểm tra kết nối mạng'); return; }
+  try{ await ensureXlsxLib(); }catch(e){ toast(e.message); return; }
   const reader = new FileReader();
   reader.onload = async (e)=>{
     try{
@@ -1740,6 +1800,7 @@ async function handlePdfUpload(file){
   importState.fileName = file.name;
   renderImportPdf(document.getElementById('main'));
   try{
+    await ensurePdfLib();
     const lines = await extractPdfLines(file);
     const items = parseInvoiceLines(lines);
     items.forEach(it=>{ if(!it.unit) it.unit = guessUnitForName(it.name) || DEFAULT_UNIT; });
@@ -1920,33 +1981,7 @@ function renderImportDone(body){
 }
 
 /* ---------------- INIT ---------------- */
-async function resolveWorkerSrc(){
-  const LOCAL = 'lib/pdf.worker.min.js';
-  const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  // Opened as a local file (file://): trust the local path — the user was guided to place it there for offline use.
-  if(location.protocol === 'file:') return LOCAL;
-  // Hosted online (http/https): check if lib/pdf.worker.min.js was actually uploaded (same-origin, safe to use directly).
-  try{
-    const res = await fetch(LOCAL, { method:'HEAD' });
-    if(res.ok) return LOCAL;
-  }catch(e){ /* fall through */ }
-  // Not uploaded locally — fetch the CDN worker script's actual code and load it from a same-origin
-  // blob: URL instead. Browsers block creating a Worker directly from a cross-origin script URL,
-  // so pointing workerSrc straight at the CDN link fails silently with a security error.
-  try{
-    const res = await fetch(CDN);
-    if(res.ok){
-      const code = await res.text();
-      const blob = new Blob([code], { type: 'application/javascript' });
-      return URL.createObjectURL(blob);
-    }
-  }catch(e){ console.error('Không tải được worker PDF từ CDN', e); }
-  return CDN; // last resort
-}
 (async function init(){
-  if(typeof pdfjsLib !== 'undefined'){
-    pdfjsLib.GlobalWorkerOptions.workerSrc = await resolveWorkerSrc();
-  }
   await loadAll();
   seedIfEmpty();
   await tryResumeLinkedFile(); // if a fixed local database file was linked before and permission still granted, its data takes precedence
