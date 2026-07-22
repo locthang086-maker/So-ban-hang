@@ -1,0 +1,118 @@
+{
+  "products": [
+    {
+      "id": "mrvdwpley5g80",
+      "name": "Băng keo 100 Yards",
+      "sku": "SP0001",
+      "category": "VPP",
+      "price": 6200,
+      "cost": 6200,
+      "stock": 18,
+      "unit": "Cuộn"
+    },
+    {
+      "id": "mrvdwplesdmzi",
+      "name": "Băng keo 200 Yards",
+      "sku": "SP0002",
+      "category": "VPP",
+      "price": 12340,
+      "cost": 12340,
+      "stock": 18,
+      "unit": "Cuộn"
+    },
+    {
+      "id": "mrvdwplf98k5r",
+      "name": "Đồng hồ treo tường Exactly (VN) U550",
+      "sku": "SP0003",
+      "category": "VPP",
+      "price": 110380,
+      "cost": 110380,
+      "stock": 1,
+      "unit": "Cái"
+    },
+    {
+      "id": "mrvdwplf4l2wm",
+      "name": "CÁNH B300 AS (12\" INCHES - CB3AS)",
+      "sku": "SP0004",
+      "category": "VPP",
+      "price": 11220,
+      "cost": 11220,
+      "stock": 3,
+      "unit": "Cái"
+    },
+    {
+      "id": "mrvdwplf5rblf",
+      "name": "Đèn led búp trụ bọc nhôm cao cấp 30W hiệu Cái",
+      "sku": "SP0005",
+      "category": "VPP",
+      "price": 21760,
+      "cost": 21760,
+      "stock": 5,
+      "unit": "cái"
+    },
+    {
+      "id": "mrvdwplfootbm",
+      "name": "LT100 Đèn led búp trụ bọc nhôm cao cấp 40W hiệu Cái",
+      "sku": "SP0006",
+      "category": "VPP",
+      "price": 29920,
+      "cost": 29920,
+      "stock": 5,
+      "unit": "cái"
+    }
+  ],
+  "customers": [
+    {
+      "id": "mrsqut4bk4ibu",
+      "name": "Khách lẻ",
+      "phone": "",
+      "address": "",
+      "note": "Khách vãng lai",
+      "createdAt": 1784523200347
+    }
+  ],
+  "invoices": [
+    {
+      "id": "mrsqz595nitg1",
+      "code": "HD23095897",
+      "date": 1784523095897,
+      "customerId": "mrsqut4bk4ibu",
+      "items": [
+        {
+          "productId": "mrsqwy0g1muc8",
+          "name": "1 Băng keo 100 Yards Cuộn",
+          "price": 6200,
+          "qty": 11,
+          "unit": "",
+          "subtotal": 68200
+        },
+        {
+          "productId": "mrsqwy0gzixz8",
+          "name": "CÁNH B300 AS (12\" INCHES - CB3AS) Cái",
+          "price": 11220,
+          "qty": 3,
+          "unit": "",
+          "subtotal": 33660
+        },
+        {
+          "productId": "mrsqwy0gepssd",
+          "name": "3 Đồng hồ treo tường Exactly (VN) U550 Cái",
+          "price": 110380,
+          "qty": 1,
+          "unit": "",
+          "subtotal": 110380
+        },
+        {
+          "productId": "mrsqwy0gupo32",
+          "name": "2 Băng keo 200 Yards Cuộn",
+          "price": 12340,
+          "qty": 5,
+          "unit": "",
+          "subtotal": 61700
+        }
+      ],
+      "total": 273940
+    }
+  ],
+  "savedAt": 1784682571419
+}
